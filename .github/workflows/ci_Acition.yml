@@ -1,37 +1,45 @@
-name: Python CI pip
+name: Python CI
 
 on:
-   push:
-     paths:
-       - "requirements.txt"
-       - "src/**"
-       - "test/**"
-    
+  push:
+    paths:
+      - "requirements.txt"
+      - "rc/**"
+      - "tests/**"
+  pull_request:
+    paths:
+      - "requirements.txt"
+      - "rc/**"
+      - "tests/**"
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      # 1) نسخ المشروع من GitHub Runner إلى السيرفر المؤقت
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      # 2) تثبيت Python
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-                    # Cache:'pip'
+          python-version: "3.11"
+          cache: "pip"   # تفعيل cache لتسريع تثبيت المكتبات
 
+      # 3) تثبيت المتطلبات من requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt
-          # python -m pip install --upgrade pip
-          # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run tests
-        run: pytest
+      # 4) تشغيل الاختبارات وتوليد تقرير
+      - name: Run tests and generate report
+        run: pytest --junitxml=test-report.xml
 
-      # - name: Use API secret (example)
-      #   env:
-      #     API_TOKEN: ${{ secrets.MY_SECRET }}
-      #   run: |
-      #     # اختبار اتصال بخدمة خارجية بدون طباعة السر
-      #     response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $API_TOKEN" https://www.google.com/health)
-      #     echo "API responded with code $response"
-
+      # 5) رفع التقرير كـ Artifact حتى لو فشل الاختبار
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-report.xml
